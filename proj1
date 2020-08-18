@@ -1,0 +1,118 @@
+#include &lt;DFRobot_sim808.h&gt;
+#include &lt;SoftwareSerial.h&gt;
+int count = 0;                                        
+char input[20];                                 
+boolean flag = 0; 
+#define PIN_TX 10
+#define PIN_RX 11
+SoftwareSerial mySerial(PIN_TX,PIN_RX);
+DFRobot_SIM808 sim808(&amp;mySerial);
+float sp;
+String date,tim,lo,la;
+void setup(){
+  mySerial.begin(9600);
+  Serial.begin(9600);
+ 
+  //******** Initialize sim808 module *************
+  while(!sim808.init()) {
+
+
+
+      delay(1000);
+      Serial.print(&quot;Sim808 init error\r\n&quot;);
+  }
+  delay(300); 
+if( sim808.attachGPS()){
+      sendData(&quot;AT+CGPSPWR=1&quot;,200,true);
+      sendData(&quot;AT+CGNSPWR=1&quot;,200,true);
+      sendData(&quot;AT+CGSINF=0&quot;,200,true);
+      sendData(&quot;AT+CGPSSTATUS?&quot;,200,true);
+      Init();
+      Serial.println(&quot;Open the GPS power success&quot;);
+      Serial.println(sim808.getGPS());
+     }
+  else
+      Serial.println(&quot;Open the GPS power failure&quot;);
+}
+ 
+void Init(){
+  sendData(&quot;AT&quot;,2000,true);
+
+
+  sendData(&quot;AT+CGATT?&quot;,2000,true);
+  sendData(&quot;AT+SAPBR=3,1,\&quot;CONTYPE\&quot;,\&quot;GPRS\&quot;&quot;,2000,true);
+ 
+sendData(&quot;AT+SAPBR=3,1,\&quot;APN\&quot;,\&quot;TATA.DOCOMO.INTERNET\&quot;&quot;,200
+0,true);
+  sendData(&quot;AT+SAPBR=2,1&quot;,2000,true);
+  sendData(&quot;AT+SAPBR=1,1&quot;,2000,true);
+  sendData(&quot;AT+HTTPINIT&quot;,2000,true);
+  sendData(&quot;AT+HTTPPARA=\&quot;CID\&quot;,1&quot;,2000,true);
+  Serial.flush();
+  }
+ 
+void sendData(String command, const int timeout, boolean debug){
+    String response = &quot;&quot;;   
+    mySerial.println(command);
+    if(debug){
+    long int time = millis();  
+    while( (time+timeout) &gt; millis()){
+      while(mySerial.available()){      
+        response += char(mySerial.read());
+
+
+
+      } 
+    }   
+      Serial.print(response);
+    }   
+    Serial.flush();
+}
+void loop() {
+ 
+   //************** Get GPS data *******************
+    if (sim808.getGPS()) {
+ 
+    la=String(sim808.GPSdata.lat,6);
+    lo=String(sim808.GPSdata.lon,6);
+    sp=sim808.GPSdata.speed_kph;
+    date=String(sim808.GPSdata.year)+&quot;-
+&quot;+String(sim808.GPSdata.month)+&quot;-&quot;+String(sim808.GPSdata.day);
+   
+tim=String(sim808.GPSdata.hour)+&quot;:&quot;+String(sim808.GPSdata.minute)+&quot;:&quot;
++String(sim808.GPSdata.second);
+
+
+
+ sendData(&quot;\nAT+HTTPPARA=\&quot;URL\&quot;,\&quot;http://badri.website/projects/g
+ps/api/gps.php?bus=j&amp;lat=&quot;+ la +&quot;&amp;long=&quot;+ lo +&quot;&amp;speed=&quot;+String(sp)
++&quot;&amp;date=&quot;+date +&quot;&amp;time=&quot;+tim+&quot;\&quot;&quot;,300,true);
+  sendData(&quot;\nAT+HTTPACTION=1&quot;,2000,true);
+  }
+  else{
+   // Serial.print(&quot;Gps Error&quot;);
+    }
+ if(Serial.available())
+   {
+      count = 0;
+      while(Serial.available() &amp;&amp; count &lt;= 12)          // Read 12 characters and
+store them in input array
+      {
+         input[count] = Serial.read();
+         count++;
+       //  Serial.print(count);
+      }
+     // Serial.print(input);
+
+
+
+  Stringurl=&quot;http://badri.website/projects/gps/api/rfid.php?rfid=&quot;+String
+(input);
+      sendData(&quot;\nAT+HTTPPARA=\&quot;URL\&quot;,\&quot;&quot;+url+&quot;\&quot;&quot;,500,true);
+      sendData(&quot;\nAT+HTTPACTION=1&quot;,500,true);   // Print RFID tag
+number
+      sendData(&quot;\nAT+HTTPREAD&quot;,500,true);
+       Serial.flush();
+   }
+   
+   }
